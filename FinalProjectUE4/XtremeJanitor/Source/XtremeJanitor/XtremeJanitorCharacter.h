@@ -26,6 +26,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
+	// Sera appelée à chaque image
+	virtual void Tick(float DeltaSeconds) override;
+
+	// Quand la touche Use (E) est appuyée
+	void Use();
+
 protected:
 
 	/** Called for forwards/backward input */
@@ -56,6 +62,18 @@ protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
 	// End of APawn interface
+
+private:
+	// Seulement vrai lors de la première image avec un nouveau focus.
+	bool bHasNewFocus;
+
+	class AUsableActor* FocusedUsableActor;
+
+	class AUsableActor* GetUsableInView();
+
+	// Distance maximale de focus sur les objets.
+	UPROPERTY(EditDefaultsOnly, Category = "ObjectInteraction")
+		float MaxUseDistance;
 
 public:
 	/** Returns CameraBoom subobject **/

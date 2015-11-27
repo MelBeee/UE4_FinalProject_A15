@@ -2,12 +2,16 @@
 
 #include "XtremeJanitor.h"
 #include "XtremeJanitorCharacter.h"
+#include "UsableActor.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AXtremeJanitorCharacter
 
 AXtremeJanitorCharacter::AXtremeJanitorCharacter()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	MaxUseDistance = 800;
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -31,6 +35,8 @@ AXtremeJanitorCharacter::AXtremeJanitorCharacter()
 	CameraBoom->AttachTo(RootComponent);
 	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
+	CameraBoom->SocketOffset = FVector(0, 35, 0);
+	CameraBoom->TargetOffset = FVector(0, 0, 55);
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -50,6 +56,7 @@ void AXtremeJanitorCharacter::SetupPlayerInputComponent(class UInputComponent* I
 	check(InputComponent);
 	InputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	InputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	InputComponent->BindAction("Use", IE_Pressed, this, &AXtremeJanitorCharacter::Use);
 
 	InputComponent->BindAxis("MoveForward", this, &AXtremeJanitorCharacter::MoveForward);
 	InputComponent->BindAxis("MoveRight", this, &AXtremeJanitorCharacter::MoveRight);
@@ -113,15 +120,91 @@ void AXtremeJanitorCharacter::MoveForward(float Value)
 
 void AXtremeJanitorCharacter::MoveRight(float Value)
 {
-	if ( (Controller != NULL) && (Value != 0.0f) )
+	if ((Controller != NULL) && (Value != 0.0f))
 	{
 		// find out which way is right
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
-	
+
 		// get right vector 
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
 	}
+
+
 }
+
+void AXtremeJanitorCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (Controller && Controller->IsLocalController())
+	{
+		AUsableActor* Usable = GetUsableInView();
+
+		// Terminer le focus sur l'objet précédent
+		if (FocusedUsableActor != Usable)
+		{
+			if (FocusedUsableActor)
+			{
+				FocusedUsableActor->OnEndFocus();
+			}
+
+			bHasNewFocus = true;
+		}
+
+		// Assigner le nouveau focus (peut être nul )
+		FocusedUsableActor = Usable;
+
+		// Démarrer un nouveau focus si Usable != null;
+		if (Usable)
+		{
+			if (bHasNewFocus)
+			{
+				Usable->OnBeginFocus();
+				bHasNewFocus = false;
+				// Pour débogage, vous pourrez l'oter par la suite
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Focus"));
+			}
+		}
+	}
+}
+
+AUsableActor* AXtremeJanitorCharacter::GetUsableInView()
+{
+	FVector CamLoc;
+	FRotator CamRot;
+
+	if (Controller == NULL)
+		return NULL;
+
+	Controller->GetPlayerViewPoint(CamLoc, CamRot);
+	const FVector TraceStart = CamLoc;
+	const FVector Direction = CamRot.Vector();
+	const FVector TraceEnd = TraceStart + (Direction * MaxUseDistance);
+
+	FCollisionQueryParams TraceParams(FName(TEXT("TraceUsableActor")), true, this);
+	TraceParams.bTraceAsyncScene = true;
+	TraceParams.bReturnPhysicalMaterial = false;
+	TraceParams.bTraceComplex = true;
+
+	FHitResult Hit(ForceInit);
+	GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, TraceParams);
+
+	// Cette ligne sera en commentaire plus tard
+	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 1.0f);
+
+	return Cast<AUsableActor>(Hit.GetActor());
+}
+
+
+void AXtremeJanitorCharacter::Use()
+{
+	AUsableActor* Usable = GetUsableInView();
+	if (Usable)
+	{
+		Usable->OnUsed(this);
+	}
+}
+
