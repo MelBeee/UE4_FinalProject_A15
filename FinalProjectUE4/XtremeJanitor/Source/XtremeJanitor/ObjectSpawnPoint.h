@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Engine/TargetPoint.h"
+#include "ConsumableActor.h"
 #include "ObjectSpawnPoint.generated.h"
 
 /**
@@ -15,7 +16,11 @@ class XTREMEJANITOR_API AObjectSpawnPoint : public ATargetPoint
 	
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "SpawnUtilities");
-	void spawnCollectibleObject(AActor* Owner = NULL, APawn* Instigator = NULL, bool bNoCollisionFail = false);
+/*	UFUNCTION(BlueprintCallable, Category = "SpawnUtilities");
+	*/void spawnCollectibleObject(AActor* Owner = NULL, APawn* Instigator = NULL, bool bNoCollisionFail = false);
 	
+	/** Classe de projectile à faire apparaître */
+	UPROPERTY(EditDefaultsOnly, Category = Object)
+		TSubclassOf<class AConsumableActor> ObjectClass;
+
 };

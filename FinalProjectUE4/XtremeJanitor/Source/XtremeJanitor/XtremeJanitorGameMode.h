@@ -10,6 +10,8 @@ class AXtremeJanitorGameMode : public AGameMode
 
 public:
 	AXtremeJanitorGameMode();
+	void BeginPlay() override;
+
 };
 
 
